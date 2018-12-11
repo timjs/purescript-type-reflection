@@ -1,10 +1,12 @@
 module Type.Reflection where
 
 
+import Prelude
+
 import Data.Generic.Rep (class Generic, Argument, Constructor, NoArguments, NoConstructors, Product, Sum)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 
-import Unsafe.Coerce
+import Unsafe.Coerce (unsafeCoerce)
 
 
 
@@ -18,6 +20,28 @@ data TypeRep r
   | NoConstructors
   | Product (forall p. (forall a b. TypeRep a -> TypeRep b -> p) -> p)
   | Sum (forall p. (forall a b. TypeRep a -> TypeRep b -> p) -> p)
+  | Int
+  | Number
+  | String
+  | Array (forall p. (forall a. TypeRep a -> p) -> p)
+
+
+instance showTypeRep :: Show (TypeRep r) where
+  show (Argument unpack) = unpack \inner ->
+    "(Argument " <> show inner <> ")"
+  show NoArguments = "NoArguments"
+  show (Constructor unpack) = unpack \name inner ->
+    "(Constructor \"" <> name <> "\" " <> show inner <> ")"
+  show NoConstructors = "NoConstructors"
+  show (Product unpack) = unpack \left right ->
+    "(Product " <> show left <> " " <> show right <> ")"
+  show (Sum unpack) = unpack \left right ->
+    "(Sum " <> show left <> " " <> show right <> ")"
+  show Int = "Int"
+  show Number = "Number"
+  show String = "String"
+  show (Array unpack) = unpack \inner ->
+    "(Array " <> show inner <> ")"
 
 
 class GenericTypeable r where
@@ -25,9 +49,9 @@ class GenericTypeable r where
 
 
 instance genericTypeableArgument ::
-  GenericTypeable a => GenericTypeable (Argument a)
+  Typeable a => GenericTypeable (Argument a)
   where
-    typeRep' = Argument \pack -> pack (typeRep' :: TypeRep a)
+    typeRep' = Argument \pack -> pack (typeRep :: TypeRep a)
 
 
 instance genericTypeableNoArguments ::
@@ -71,13 +95,31 @@ instance genericTypeableProduct ::
 -- type SomeTypeRep = Pack (forall r. TypeRep r)
 
 
--- class Typeable a where
---   typeRep :: a -> TypeRep a
+class Typeable a where
+  typeRep :: TypeRep a
 
-typeRep :: forall a r.
-  Generic a r => GenericTypeable r =>
-  a -> TypeRep a
-typeRep _ = unsafeCoerce (typeRep' :: TypeRep r)
+instance typeableInt ::
+  Typeable Int where
+    typeRep = Int
+else instance typeableNumber ::
+  Typeable Number where
+    typeRep = Number
+else instance typeableString ::
+  Typeable String where
+    typeRep = String
+else instance typeableArray ::
+  Typeable a => Typeable (Array a) where
+    typeRep = Array \pack -> pack (typeRep :: TypeRep a)
+else instance typeableGeneric ::
+  (Generic a r, GenericTypeable r) => Typeable a where
+    typeRep = unsafeCoerce (typeRep' :: TypeRep r)
 
--- instance typeableAll :: (Generic a r, GenericTypeable r) => Typeable a where
---   typeRep _ = ?h
+
+typeOf :: forall a. Typeable a => a -> TypeRep a
+typeOf _ = typeRep
+
+
+-- typeRep :: forall a r.
+--   Generic a r => GenericTypeable r =>
+--   a -> TypeRep a
+-- typeRep _ = unsafeCoerce (typeRep' :: TypeRep r)
