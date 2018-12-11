@@ -3,7 +3,7 @@ module Type.Reflection where
 
 import Prelude
 
--- import Prim.TypeError (class Fail, Beside, Quote, Text)
+import Prim.TypeError (class Warn, Beside, Quote, Text)
 
 import Data.Generic.Rep (class Generic, Argument, Constructor, NoArguments, NoConstructors, Product, Sum)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
@@ -40,35 +40,37 @@ data TypeRep r
 
 instance showTypeRep :: Show (TypeRep r) where
   show (Argument unpack) = unpack \inner ->
-    -- "(Argument " <> show inner <> ")"
-    group $ show inner
+    "(Argument " <> show inner <> ")"
+    -- group $ show inner
   show NoArguments =
-    -- "NoArguments"
-    "_"
+    "NoArguments"
+    -- "_"
   show (Constructor unpack) = unpack \name prod ->
-    -- "(Constructor \"" <> name <> "\" " <> show prod <> ")"
-    name <> " " <> show prod
-  show NoConstructors = "_"
+    "(Constructor \"" <> name <> "\" " <> show prod <> ")"
+    -- name <> " " <> show prod
+  show NoConstructors =
+    "NoConstructors"
+    -- "_"
   show (Product unpack) = unpack \left right ->
-    -- "(Product " <> show left <> " " <> show right <> ")"
-    show left <> " " <> show right
+    "(Product " <> show left <> " " <> show right <> ")"
+    -- show left <> " " <> show right
   show (Sum unpack) = unpack \left right ->
-    -- "(Sum " <> show left <> " " <> show right <> ")"
-    show left <> " | " <> show right
+    "(Sum " <> show left <> " " <> show right <> ")"
+    -- show left <> " | " <> show right
   show Recurse =
-    -- show "Recurse"
-    "recurse"
+    "Recurse"
+    -- "recurse"
   show Boolean = "Boolean"
   show Int = "Int"
   show Number = "Number"
   show Char = "Char"
   show String = "String"
   show (Array unpack) = unpack \inner ->
-    -- "(Array " <> show inner <> ")"
-    "Array " <> group (show inner)
+    "(Array " <> show inner <> ")"
+    -- "Array " <> group (show inner)
   show (Function unpack) = unpack \from to ->
-    -- "(" <> show from <> " -> " <> show to <> ")"
-    show from <> " -> " <> show to
+    "(" <> show from <> " -> " <> show to <> ")"
+    -- show from <> " -> " <> show to
 
 
 -- Typeable --------------------------------------------------------------------
@@ -85,69 +87,69 @@ class Typeable a where
 
 
 instance
-  typeableArgument :: BasicTypeable a =>
+  genericTypeableArgument :: BasicTypeable a =>
     GenericTypeable (Argument a)
   where
     genTypeRep = Argument \pack -> pack (basicTypeRep :: TypeRep a)
 else instance
-  typeableNoArguments ::
+  genericTypeableNoArguments ::
     GenericTypeable NoArguments
   where
     genTypeRep = NoArguments
 else instance
-  typeableConstructor :: (IsSymbol name, GenericTypeable a) =>
+  genericTypeableConstructor :: (IsSymbol name, GenericTypeable a) =>
     GenericTypeable (Constructor name a)
   where
     genTypeRep = Constructor \pack ->
       pack (reflectSymbol (SProxy :: SProxy name)) (genTypeRep :: TypeRep a)
 else instance
-  typeableNoConstructors ::
+  genericTypeableNoConstructors ::
     GenericTypeable NoConstructors
   where
     genTypeRep = NoConstructors
 else instance
-  typeableSum :: (GenericTypeable a, GenericTypeable b) =>
+  genericTypeableSum :: (GenericTypeable a, GenericTypeable b) =>
     GenericTypeable (Sum a b)
   where
     genTypeRep = Sum \pack ->
       pack (genTypeRep :: TypeRep a) (genTypeRep :: TypeRep b)
 else instance
-  typeableProduct :: (GenericTypeable a, GenericTypeable b) =>
+  genericTypeableProduct :: (GenericTypeable a, GenericTypeable b) =>
     GenericTypeable (Product a b)
   where
     genTypeRep = Product \pack ->
       pack (genTypeRep :: TypeRep a) (genTypeRep :: TypeRep b)
 
 instance
-  typeableBasicBoolean :: BasicTypeable Boolean
+  basicTypeableBoolean :: BasicTypeable Boolean
   where
     basicTypeRep = Boolean
 else instance
-  typeableBasicInt :: BasicTypeable Int
+  basicTypeableInt :: BasicTypeable Int
   where
     basicTypeRep = Int
 else instance
-  typeableBasicNumber :: BasicTypeable Number
+  basicTypeableNumber :: BasicTypeable Number
   where
     basicTypeRep = Number
 else instance
-  typeableBasicChar :: BasicTypeable Char
+  basicTypeableChar :: BasicTypeable Char
   where
     basicTypeRep = Char
 else instance
-  typeableBasicString :: BasicTypeable String
+  basicTypeableString :: BasicTypeable String
   where
     basicTypeRep = String
 else instance
-  typeableBasicArray :: Typeable a => BasicTypeable (Array a)
+  basicTypeableArray :: Typeable a => BasicTypeable (Array a)
   where
     basicTypeRep = Array \pack -> pack (typeRep :: TypeRep a)
 else instance
-  typeableBasicFunction :: (Typeable a, Typeable b) => BasicTypeable (Function a b)
+  basicTypeableFunction :: (Typeable a, Typeable b) => BasicTypeable (Function a b)
   where
     basicTypeRep = Function \pack -> pack (typeRep :: TypeRep a) (typeRep :: TypeRep b)
 else instance
-  typeableBasicType :: BasicTypeable a
+  basicTypeableFail :: Warn (Beside (Text "Non basic types like `") (Beside (Quote a) (Text "` are represented uniformly!"))) => BasicTypeable a
   where
     basicTypeRep = Recurse
 

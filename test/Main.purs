@@ -10,9 +10,11 @@ module Main
   ) where
 
 
+import Type.Reflection
+
+import Prelude ((+))
 import Data.Generic.Rep (class Generic, from, to)
 
-import Type.Reflection
 
 
 
@@ -64,8 +66,8 @@ data More a b
 derive instance genericTest :: Generic (More a b) _
 
 
-m :: More Int String
-m = Two 1 "a"
+m :: More Int (Pair Int Int -> Int)
+m = Two 1 (\(Pair x y) -> x + y)
 
 
 
