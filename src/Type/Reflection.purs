@@ -1,6 +1,6 @@
 module Type.Reflection
-  ( TypeRep, same
-  , class Typeable, typeRep, typeOf
+  ( Fingerprint
+  , class Typeable, fingerprint, typeOf
   , cast
   ) where
 
@@ -11,6 +11,8 @@ import Data.Generic.Rep (class Generic, Argument, Constructor, NoArguments, NoCo
 import Data.Maybe (Maybe(..))
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 
+import Type.Proxy (Proxy(Proxy))
+
 import Unsafe.Coerce (unsafeCoerce)
 
 
@@ -18,73 +20,53 @@ import Unsafe.Coerce (unsafeCoerce)
 -- Type representations --------------------------------------------------------
 
 
-data TypeRep r
-  = Argument (forall p. (forall a. TypeRep a -> p) -> p)
+data Fingerprint
+  = Argument Fingerprint
   | NoArguments
-  | Constructor (forall p. (forall a. String -> TypeRep a -> p) -> p)
+  | Constructor String Fingerprint
   | NoConstructors
-  | Product (forall p. (forall a b. TypeRep a -> TypeRep b -> p) -> p)
-  | Sum (forall p. (forall a b. TypeRep a -> TypeRep b -> p) -> p)
+  | Product Fingerprint Fingerprint
+  | Sum Fingerprint Fingerprint
   | Boolean
   | Int
   | Number
   | Char
   | String
-  | Array (forall p. (forall a. TypeRep a -> p) -> p)
-  | Function (forall p. (forall a b. TypeRep a -> TypeRep b -> p) -> p)
+  | Array Fingerprint
+  | Function Fingerprint Fingerprint
 
 
-instance showTypeRep :: Show (TypeRep r) where
-  show (Argument unpack) = unpack \inner ->
-    "(Argument " <> show inner <> ")"
-    -- group $ show inner
-  show NoArguments =
-    "NoArguments"
-    -- "_"
-  show (Constructor unpack) = unpack \name prod ->
-    "(Constructor \"" <> name <> "\" " <> show prod <> ")"
-    -- name <> " " <> show prod
-  show NoConstructors =
-    "NoConstructors"
-    -- "_"
-  show (Product unpack) = unpack \left right ->
-    "(Product " <> show left <> " " <> show right <> ")"
-    -- show left <> " " <> show right
-  show (Sum unpack) = unpack \left right ->
-    "(Sum " <> show left <> " " <> show right <> ")"
-    -- show left <> " | " <> show right
-  show Boolean = "Boolean"
-  show Int = "Int"
-  show Number = "Number"
-  show Char = "Char"
-  show String = "String"
-  show (Array unpack) = unpack \inner ->
-    "(Array " <> show inner <> ")"
-    -- "Array " <> group (show inner)
-  show (Function unpack) = unpack \from to ->
-    "(" <> show from <> " -> " <> show to <> ")"
-    -- show from <> " -> " <> show to
+instance showTypeRep :: Show Fingerprint where
+  show (Argument inner)        = "(Argument " <> show inner <> ")"
+  show NoArguments             = "NoArguments"
+  show (Constructor name prod) = "(Constructor \"" <> name <> "\" " <> show prod <> ")"
+  show NoConstructors          = "NoConstructors"
+  show (Product a b)           = "(Product " <> show a <> " " <> show b <> ")"
+  show (Sum a b)               = "(Sum " <> show a <> " " <> show b <> ")"
+  show Boolean                 = "Boolean"
+  show Int                     = "Int"
+  show Number                  = "Number"
+  show Char                    = "Char"
+  show String                  = "String"
+  show (Array inner)           = "(Array " <> show inner <> ")"
+  show (Function a b)          = "(" <> show a <> " -> " <> show b <> ")"
 
 
-instance eqTypeRep :: Eq (TypeRep a) where
-  eq (Argument unl) (Argument unr) = unl \l -> unr \r -> same l r
-  eq (NoArguments) (NoArguments) = true
-  eq (Constructor unl) (Constructor unr) = unl \n l -> unr \m r -> n == m && same l r
-  eq (NoConstructors) (NoConstructors) = true
-  eq (Product unl) (Product unr) = unl \la lb -> unr \ra rb -> same la lb && same ra rb
-  eq (Sum unl) (Sum unr) = unl \la lb -> unr \ra rb -> same la lb && same ra rb
-  eq (Boolean) (Boolean) = true
-  eq (Int) (Int) = true
-  eq (Number) (Number) = true
-  eq (Char) (Char) = true
-  eq (String) (String) = true
-  eq (Array unl) (Array unr) = unl \l -> unr \r -> same l r
-  eq (Function unl) (Function unr) = unl \la lb -> unr \ra rb -> same la ra && same ra rb
-  eq _ _ = false
-
-
-same :: forall a b. TypeRep a -> TypeRep b -> Boolean
-same a b = a == unsafeCoerce b
+instance eqTypeRep :: Eq Fingerprint where
+  eq (Argument l)      (Argument r)      = l  == r
+  eq (NoArguments)     (NoArguments)     = true
+  eq (Constructor n l) (Constructor m r) = n  == m && l   == r
+  eq (NoConstructors)  (NoConstructors)  = true
+  eq (Product la lb)   (Product ra rb)   = la == lb && ra == rb
+  eq (Sum la lb)       (Sum ra rb)       = la == lb && ra == rb
+  eq (Boolean)         (Boolean)         = true
+  eq (Int)             (Int)             = true
+  eq (Number)          (Number)          = true
+  eq (Char)            (Char)            = true
+  eq (String)          (String)          = true
+  eq (Array l)         (Array r)         = l  == r
+  eq (Function la lb)  (Function ra rb)  = la == ra && ra == rb
+  eq _ _                                 = false
 
 
 
@@ -92,80 +74,77 @@ same a b = a == unsafeCoerce b
 
 
 class Typeable a where
-  typeRep :: TypeRep a
+  fingerprint :: Proxy a -> Fingerprint
 
 
 instance
   typeableBoolean :: Typeable Boolean
   where
-    typeRep = Boolean
+    fingerprint _ = Boolean
 else instance
   typeableInt :: Typeable Int
   where
-    typeRep = Int
+    fingerprint _ = Int
 else instance
   typeableNumber :: Typeable Number
   where
-    typeRep = Number
+    fingerprint _ = Number
 else instance
   typeableChar :: Typeable Char
   where
-    typeRep = Char
+    fingerprint _ = Char
 else instance
   typeableString :: Typeable String
   where
-    typeRep = String
+    fingerprint _ = String
 else instance
   typeableArray :: Typeable a => Typeable (Array a)
   where
-    typeRep = Array \pack -> pack (typeRep :: TypeRep a)
+    fingerprint _ = Array (fingerprint (Proxy :: Proxy a))
 else instance
   typeableFunction :: (Typeable a, Typeable b) => Typeable (Function a b)
   where
-    typeRep = Function \pack -> pack (typeRep :: TypeRep a) (typeRep :: TypeRep b)
+    fingerprint _ = Function (fingerprint (Proxy :: Proxy a)) (fingerprint (Proxy :: Proxy b))
 
 else instance
   typeableArgument :: Typeable a =>
     Typeable (Argument a)
   where
-    typeRep = Argument \pack -> pack (typeRep :: TypeRep a)
+    fingerprint _ = Argument (fingerprint (Proxy :: Proxy a))
 else instance
   typeableNoArguments ::
     Typeable NoArguments
   where
-    typeRep = NoArguments
+    fingerprint _ = NoArguments
 else instance
   typeableConstructor :: (IsSymbol name, Typeable a) =>
     Typeable (Constructor name a)
   where
-    typeRep = Constructor \pack ->
-      pack (reflectSymbol (SProxy :: SProxy name)) (typeRep :: TypeRep a)
+    fingerprint _ = Constructor (reflectSymbol (SProxy :: SProxy name)) (fingerprint (Proxy :: Proxy a))
 else instance
   typeableNoConstructors ::
     Typeable NoConstructors
   where
-    typeRep = NoConstructors
+    fingerprint _ = NoConstructors
 else instance
   typeableSum :: (Typeable a, Typeable b) =>
     Typeable (Sum a b)
   where
-    typeRep = Sum \pack ->
-      pack (typeRep :: TypeRep a) (typeRep :: TypeRep b)
+    fingerprint _ = Sum (fingerprint (Proxy :: Proxy a)) (fingerprint (Proxy :: Proxy b))
 else instance
   typeableProduct :: (Typeable a, Typeable b) =>
     Typeable (Product a b)
   where
-    typeRep = Product \pack ->
-      pack (typeRep :: TypeRep a) (typeRep :: TypeRep b)
+    fingerprint _ = Product (fingerprint (Proxy :: Proxy a)) (fingerprint (Proxy :: Proxy b))
 
 else instance
   typeableGeneric :: (Generic a r, Typeable r) => Typeable a
   where
-    typeRep = unsafeCoerce (typeRep :: TypeRep r)
+    fingerprint _ = unsafeCoerce (fingerprint (Proxy :: Proxy r))
 
 
-typeOf :: forall a. Typeable a => a -> TypeRep a
-typeOf _ = typeRep
+typeOf :: forall a. Typeable a => a -> Fingerprint
+typeOf _ = fingerprint (Proxy :: Proxy a)
 
 
 
@@ -174,16 +153,5 @@ typeOf _ = typeRep
 
 cast :: forall a b. Typeable a => Typeable b => a -> Maybe b
 cast x
-  | same (typeRep :: TypeRep a) (typeRep :: TypeRep b) = Just $ unsafeCoerce x
+  | typeOf x == fingerprint (Proxy :: Proxy b) = Just $ unsafeCoerce x
   | otherwise = Nothing
-
-
-
--- Helpers ---------------------------------------------------------------------
-
-
-quote :: String -> String
-quote s = "\"" <> s <> "\""
-
-group :: String -> String
-group s = "(" <> s <> ")"
