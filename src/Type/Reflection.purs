@@ -3,8 +3,6 @@ module Type.Reflection where
 
 import Prelude
 
-import Prim.TypeError (class Warn, Beside, Quote, Text)
-
 import Data.Generic.Rep (class Generic, Argument, Constructor, NoArguments, NoConstructors, Product, Sum)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 
@@ -28,7 +26,6 @@ data TypeRep r
   | NoConstructors
   | Product (forall p. (forall a b. TypeRep a -> TypeRep b -> p) -> p)
   | Sum (forall p. (forall a b. TypeRep a -> TypeRep b -> p) -> p)
-  | Recurse
   | Boolean
   | Int
   | Number
@@ -57,9 +54,6 @@ instance showTypeRep :: Show (TypeRep r) where
   show (Sum unpack) = unpack \left right ->
     "(Sum " <> show left <> " " <> show right <> ")"
     -- show left <> " | " <> show right
-  show Recurse =
-    "Recurse"
-    -- "recurse"
   show Boolean = "Boolean"
   show Int = "Int"
   show Number = "Number"
@@ -76,82 +70,9 @@ instance showTypeRep :: Show (TypeRep r) where
 -- Typeable --------------------------------------------------------------------
 
 
-class GenericTypeable r where
-  genTypeRep :: TypeRep r
-
-class BasicTypeable b where
-  basicTypeRep :: TypeRep b
-
 class Typeable a where
   typeRep :: TypeRep a
 
-
-instance
-  genericTypeableArgument :: BasicTypeable a =>
-    GenericTypeable (Argument a)
-  where
-    genTypeRep = Argument \pack -> pack (basicTypeRep :: TypeRep a)
-else instance
-  genericTypeableNoArguments ::
-    GenericTypeable NoArguments
-  where
-    genTypeRep = NoArguments
-else instance
-  genericTypeableConstructor :: (IsSymbol name, GenericTypeable a) =>
-    GenericTypeable (Constructor name a)
-  where
-    genTypeRep = Constructor \pack ->
-      pack (reflectSymbol (SProxy :: SProxy name)) (genTypeRep :: TypeRep a)
-else instance
-  genericTypeableNoConstructors ::
-    GenericTypeable NoConstructors
-  where
-    genTypeRep = NoConstructors
-else instance
-  genericTypeableSum :: (GenericTypeable a, GenericTypeable b) =>
-    GenericTypeable (Sum a b)
-  where
-    genTypeRep = Sum \pack ->
-      pack (genTypeRep :: TypeRep a) (genTypeRep :: TypeRep b)
-else instance
-  genericTypeableProduct :: (GenericTypeable a, GenericTypeable b) =>
-    GenericTypeable (Product a b)
-  where
-    genTypeRep = Product \pack ->
-      pack (genTypeRep :: TypeRep a) (genTypeRep :: TypeRep b)
-
-instance
-  basicTypeableBoolean :: BasicTypeable Boolean
-  where
-    basicTypeRep = Boolean
-else instance
-  basicTypeableInt :: BasicTypeable Int
-  where
-    basicTypeRep = Int
-else instance
-  basicTypeableNumber :: BasicTypeable Number
-  where
-    basicTypeRep = Number
-else instance
-  basicTypeableChar :: BasicTypeable Char
-  where
-    basicTypeRep = Char
-else instance
-  basicTypeableString :: BasicTypeable String
-  where
-    basicTypeRep = String
-else instance
-  basicTypeableArray :: Typeable a => BasicTypeable (Array a)
-  where
-    basicTypeRep = Array \pack -> pack (typeRep :: TypeRep a)
-else instance
-  basicTypeableFunction :: (Typeable a, Typeable b) => BasicTypeable (Function a b)
-  where
-    basicTypeRep = Function \pack -> pack (typeRep :: TypeRep a) (typeRep :: TypeRep b)
-else instance
-  basicTypeableFail :: Warn (Beside (Text "Non basic types like `") (Beside (Quote a) (Text "` are represented uniformly!"))) => BasicTypeable a
-  where
-    basicTypeRep = Recurse
 
 instance
   typeableBoolean :: Typeable Boolean
@@ -181,14 +102,45 @@ else instance
   typeableFunction :: (Typeable a, Typeable b) => Typeable (Function a b)
   where
     typeRep = Function \pack -> pack (typeRep :: TypeRep a) (typeRep :: TypeRep b)
-else instance
-  typeableGeneric :: (Generic a r, GenericTypeable r) => Typeable a
-  where
-    typeRep = unsafeCoerce (genTypeRep :: TypeRep r)
 
--- else instance typeableFail ::
---   Fail (Beside (Text "Can not generate a type representation for ") (Quote a)) => Typeable a where
---     typeRep = unsafeCoerce unit
+else instance
+  typeableArgument :: Typeable a =>
+    Typeable (Argument a)
+  where
+    typeRep = Argument \pack -> pack (typeRep :: TypeRep a)
+else instance
+  typeableNoArguments ::
+    Typeable NoArguments
+  where
+    typeRep = NoArguments
+else instance
+  typeableConstructor :: (IsSymbol name, Typeable a) =>
+    Typeable (Constructor name a)
+  where
+    typeRep = Constructor \pack ->
+      pack (reflectSymbol (SProxy :: SProxy name)) (typeRep :: TypeRep a)
+else instance
+  typeableNoConstructors ::
+    Typeable NoConstructors
+  where
+    typeRep = NoConstructors
+else instance
+  typeableSum :: (Typeable a, Typeable b) =>
+    Typeable (Sum a b)
+  where
+    typeRep = Sum \pack ->
+      pack (typeRep :: TypeRep a) (typeRep :: TypeRep b)
+else instance
+  typeableProduct :: (Typeable a, Typeable b) =>
+    Typeable (Product a b)
+  where
+    typeRep = Product \pack ->
+      pack (typeRep :: TypeRep a) (typeRep :: TypeRep b)
+
+else instance
+  typeableGeneric :: (Generic a r, Typeable r) => Typeable a
+  where
+    typeRep = unsafeCoerce (typeRep :: TypeRep r)
 
 
 typeOf :: forall a. Typeable a => a -> TypeRep a
