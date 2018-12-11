@@ -1,6 +1,6 @@
 module Main
-  ( module Data.Generic.Rep
-  , module Type.Reflection
+  ( module Type.Reflection
+  , module Data.Generic.Rep
   , None
   , Only, o
   , Pair, p
@@ -14,11 +14,13 @@ import Type.Reflection
 
 import Prelude ((+))
 import Data.Generic.Rep (class Generic, from, to)
+import Data.Maybe (Maybe)
 
 
 
+-- Some types ------------------------------------------------------------------
 
--- None ------------------------------------------------------------------------
+-- None --
 
 
 data None
@@ -27,7 +29,7 @@ derive instance genericNone :: Generic None _
 
 
 
--- Only ------------------------------------------------------------------------
+-- Only --
 
 
 data Only
@@ -41,7 +43,7 @@ o = Only
 
 
 
--- Pair ------------------------------------------------------------------------
+-- Pair --
 
 
 data Pair a b
@@ -55,7 +57,7 @@ p = Pair 1 2
 
 
 
--- More ------------------------------------------------------------------------
+-- More --
 
 
 data More a b
@@ -71,7 +73,7 @@ m = Two 1 (\(Pair x y) -> x + y)
 
 
 
--- List ------------------------------------------------------------------------
+-- List --
 
 
 data List a
@@ -86,7 +88,7 @@ l = Cons 1 (Cons 0 Nil)
 
 
 
--- Tree ------------------------------------------------------------------------
+-- Tree --
 
 
 data Tree a b
@@ -98,3 +100,19 @@ derive instance genericTree :: Generic (Tree a b) _
 
 t :: Tree Int String
 t = Node (Leaf 1) "a" (Leaf 2)
+
+
+
+-- Existential typing ----------------------------------------------------------
+
+
+data Pack
+  = Pack (forall p. (forall a. Typeable a => a -> p) -> p)
+
+
+pack :: forall a. Typeable a => a -> Pack
+pack x = Pack \make -> make x
+
+
+unpack :: forall a. Typeable a => Pack -> Maybe a
+unpack (Pack unmake) = unmake \x -> cast x
