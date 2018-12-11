@@ -1,12 +1,14 @@
 module Type.Reflection
-  ( TypeRep
+  ( TypeRep, same
   , class Typeable, typeRep, typeOf
+  , cast
   ) where
 
 
-import Prelude (class Show, show, (<>))
+import Prelude
 
 import Data.Generic.Rep (class Generic, Argument, Constructor, NoArguments, NoConstructors, Product, Sum)
+import Data.Maybe (Maybe(..))
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 
 import Unsafe.Coerce (unsafeCoerce)
@@ -62,6 +64,27 @@ instance showTypeRep :: Show (TypeRep r) where
   show (Function unpack) = unpack \from to ->
     "(" <> show from <> " -> " <> show to <> ")"
     -- show from <> " -> " <> show to
+
+
+instance eqTypeRep :: Eq (TypeRep a) where
+  eq (Argument unl) (Argument unr) = unl \l -> unr \r -> same l r
+  eq (NoArguments) (NoArguments) = true
+  eq (Constructor unl) (Constructor unr) = unl \n l -> unr \m r -> n == m && same l r
+  eq (NoConstructors) (NoConstructors) = true
+  eq (Product unl) (Product unr) = unl \la lb -> unr \ra rb -> same la lb && same ra rb
+  eq (Sum unl) (Sum unr) = unl \la lb -> unr \ra rb -> same la lb && same ra rb
+  eq (Boolean) (Boolean) = true
+  eq (Int) (Int) = true
+  eq (Number) (Number) = true
+  eq (Char) (Char) = true
+  eq (String) (String) = true
+  eq (Array unl) (Array unr) = unl \l -> unr \r -> same l r
+  eq (Function unl) (Function unr) = unl \la lb -> unr \ra rb -> same la ra && same ra rb
+  eq _ _ = false
+
+
+same :: forall a b. TypeRep a -> TypeRep b -> Boolean
+same a b = a == unsafeCoerce b
 
 
 
@@ -143,6 +166,16 @@ else instance
 
 typeOf :: forall a. Typeable a => a -> TypeRep a
 typeOf _ = typeRep
+
+
+
+-- Casts -----------------------------------------------------------------------
+
+
+cast :: forall a b. Typeable a => Typeable b => a -> Maybe b
+cast x
+  | same (typeRep :: TypeRep a) (typeRep :: TypeRep b) = Just $ unsafeCoerce x
+  | otherwise = Nothing
 
 
 
