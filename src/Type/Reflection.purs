@@ -28,6 +28,7 @@ data TypeRep r
   | NoConstructors
   | Product (forall p. (forall a b. TypeRep a -> TypeRep b -> p) -> p)
   | Sum (forall p. (forall a b. TypeRep a -> TypeRep b -> p) -> p)
+  | Recurse
   | Boolean
   | Int
   | Number
@@ -54,6 +55,9 @@ instance showTypeRep :: Show (TypeRep r) where
   show (Sum unpack) = unpack \left right ->
     -- "(Sum " <> show left <> " " <> show right <> ")"
     show left <> " | " <> show right
+  show Recurse =
+    -- show "Recurse"
+    "recurse"
   show Boolean = "Boolean"
   show Int = "Int"
   show Number = "Number"
@@ -70,9 +74,68 @@ instance showTypeRep :: Show (TypeRep r) where
 -- Typeable --------------------------------------------------------------------
 
 
+class GenericTypeable r where
+  genTypeRep :: TypeRep r
+
+class BasicTypeable b where
+  basicTypeRep :: TypeRep b
+
 class Typeable a where
   typeRep :: TypeRep a
 
+
+instance typeableArgument ::
+  BasicTypeable a => GenericTypeable (Argument a)
+  where
+    genTypeRep = Argument \pack -> pack (basicTypeRep :: TypeRep a)
+else instance typeableNoArguments ::
+  GenericTypeable NoArguments where
+    genTypeRep = NoArguments
+else instance typeableConstructor ::
+  (IsSymbol name, GenericTypeable a) => GenericTypeable (Constructor name a)
+  where
+    genTypeRep = Constructor \pack ->
+      pack (reflectSymbol (SProxy :: SProxy name)) (genTypeRep :: TypeRep a)
+else instance typeableNoConstructors ::
+  GenericTypeable NoConstructors
+  where
+    genTypeRep = NoConstructors
+else instance typeableSum ::
+  (GenericTypeable a, GenericTypeable b) => GenericTypeable (Sum a b)
+  where
+    genTypeRep = Sum \pack ->
+      pack (genTypeRep :: TypeRep a) (genTypeRep :: TypeRep b)
+else instance typeableProduct ::
+  (GenericTypeable a, GenericTypeable b) => GenericTypeable (Product a b)
+  where
+    genTypeRep = Product \pack ->
+      pack (genTypeRep :: TypeRep a) (genTypeRep :: TypeRep b)
+
+instance typeableBasicBoolean ::
+  BasicTypeable Boolean where
+    basicTypeRep = Boolean
+else instance typeableBasicInt ::
+  BasicTypeable Int where
+    basicTypeRep = Int
+else instance typeableBasicNumber ::
+  BasicTypeable Number where
+    basicTypeRep = Number
+else instance typeableBasicChar ::
+  BasicTypeable Char where
+    basicTypeRep = Char
+else instance typeableBasicString ::
+  BasicTypeable String where
+    basicTypeRep = String
+else instance typeableBasicArray ::
+  Typeable a => BasicTypeable (Array a) where
+    basicTypeRep = Array \pack -> pack (typeRep :: TypeRep a)
+else instance typeableBasicFunction ::
+  (Typeable a, Typeable b) => BasicTypeable (Function a b) where
+    basicTypeRep = Function \pack -> pack (typeRep :: TypeRep a) (typeRep :: TypeRep b)
+else instance typeableBasicType ::
+  BasicTypeable a
+  where
+    basicTypeRep = Recurse
 
 instance typeableBoolean ::
   Typeable Boolean where
@@ -89,44 +152,15 @@ else instance typeableChar ::
 else instance typeableString ::
   Typeable String where
     typeRep = String
-
 else instance typeableArray ::
   Typeable a => Typeable (Array a) where
     typeRep = Array \pack -> pack (typeRep :: TypeRep a)
 else instance typeableFunction ::
   (Typeable a, Typeable b) => Typeable (Function a b) where
     typeRep = Function \pack -> pack (typeRep :: TypeRep a) (typeRep :: TypeRep b)
-
-else instance typeableArgument ::
-  Typeable a => Typeable (Argument a)
-  where
-    typeRep = Argument \pack -> pack (typeRep :: TypeRep a)
-else instance typeableNoArguments ::
-  Typeable NoArguments where
-    typeRep = NoArguments
-else instance typeableConstructor ::
-  (IsSymbol name, Typeable a) => Typeable (Constructor name a)
-  where
-    typeRep = Constructor \pack ->
-      pack (reflectSymbol (SProxy :: SProxy name)) (typeRep :: TypeRep a)
-else instance typeableNoConstructors ::
-  Typeable NoConstructors
-  where
-    typeRep = NoConstructors
-else instance typeableSum ::
-  (Typeable a, Typeable b) => Typeable (Sum a b)
-  where
-    typeRep = Sum \pack ->
-      pack (typeRep :: TypeRep a) (typeRep :: TypeRep b)
-else instance typeableProduct ::
-  (Typeable a, Typeable b) => Typeable (Product a b)
-  where
-    typeRep = Product \pack ->
-      pack (typeRep :: TypeRep a) (typeRep :: TypeRep b)
-
 else instance typeableGeneric ::
-  (Generic a r, Typeable r) => Typeable a where
-    typeRep = unsafeCoerce (typeRep :: TypeRep r)
+  (Generic a r, GenericTypeable r) => Typeable a where
+    typeRep = unsafeCoerce (genTypeRep :: TypeRep r)
 
 -- else instance typeableFail ::
 --   Fail (Beside (Text "Can not generate a type representation for ") (Quote a)) => Typeable a where
