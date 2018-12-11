@@ -84,82 +84,104 @@ class Typeable a where
   typeRep :: TypeRep a
 
 
-instance typeableArgument ::
-  BasicTypeable a => GenericTypeable (Argument a)
+instance
+  typeableArgument :: BasicTypeable a =>
+    GenericTypeable (Argument a)
   where
     genTypeRep = Argument \pack -> pack (basicTypeRep :: TypeRep a)
-else instance typeableNoArguments ::
-  GenericTypeable NoArguments where
+else instance
+  typeableNoArguments ::
+    GenericTypeable NoArguments
+  where
     genTypeRep = NoArguments
-else instance typeableConstructor ::
-  (IsSymbol name, GenericTypeable a) => GenericTypeable (Constructor name a)
+else instance
+  typeableConstructor :: (IsSymbol name, GenericTypeable a) =>
+    GenericTypeable (Constructor name a)
   where
     genTypeRep = Constructor \pack ->
       pack (reflectSymbol (SProxy :: SProxy name)) (genTypeRep :: TypeRep a)
-else instance typeableNoConstructors ::
-  GenericTypeable NoConstructors
+else instance
+  typeableNoConstructors ::
+    GenericTypeable NoConstructors
   where
     genTypeRep = NoConstructors
-else instance typeableSum ::
-  (GenericTypeable a, GenericTypeable b) => GenericTypeable (Sum a b)
+else instance
+  typeableSum :: (GenericTypeable a, GenericTypeable b) =>
+    GenericTypeable (Sum a b)
   where
     genTypeRep = Sum \pack ->
       pack (genTypeRep :: TypeRep a) (genTypeRep :: TypeRep b)
-else instance typeableProduct ::
-  (GenericTypeable a, GenericTypeable b) => GenericTypeable (Product a b)
+else instance
+  typeableProduct :: (GenericTypeable a, GenericTypeable b) =>
+    GenericTypeable (Product a b)
   where
     genTypeRep = Product \pack ->
       pack (genTypeRep :: TypeRep a) (genTypeRep :: TypeRep b)
 
-instance typeableBasicBoolean ::
-  BasicTypeable Boolean where
+instance
+  typeableBasicBoolean :: BasicTypeable Boolean
+  where
     basicTypeRep = Boolean
-else instance typeableBasicInt ::
-  BasicTypeable Int where
+else instance
+  typeableBasicInt :: BasicTypeable Int
+  where
     basicTypeRep = Int
-else instance typeableBasicNumber ::
-  BasicTypeable Number where
+else instance
+  typeableBasicNumber :: BasicTypeable Number
+  where
     basicTypeRep = Number
-else instance typeableBasicChar ::
-  BasicTypeable Char where
+else instance
+  typeableBasicChar :: BasicTypeable Char
+  where
     basicTypeRep = Char
-else instance typeableBasicString ::
-  BasicTypeable String where
+else instance
+  typeableBasicString :: BasicTypeable String
+  where
     basicTypeRep = String
-else instance typeableBasicArray ::
-  Typeable a => BasicTypeable (Array a) where
+else instance
+  typeableBasicArray :: Typeable a => BasicTypeable (Array a)
+  where
     basicTypeRep = Array \pack -> pack (typeRep :: TypeRep a)
-else instance typeableBasicFunction ::
-  (Typeable a, Typeable b) => BasicTypeable (Function a b) where
+else instance
+  typeableBasicFunction :: (Typeable a, Typeable b) => BasicTypeable (Function a b)
+  where
     basicTypeRep = Function \pack -> pack (typeRep :: TypeRep a) (typeRep :: TypeRep b)
-else instance typeableBasicType ::
-  BasicTypeable a
+else instance
+  typeableBasicType :: BasicTypeable a
   where
     basicTypeRep = Recurse
 
-instance typeableBoolean ::
-  Typeable Boolean where
+instance
+  typeableBoolean :: Typeable Boolean
+  where
     typeRep = Boolean
-else instance typeableInt ::
-  Typeable Int where
+else instance
+  typeableInt :: Typeable Int
+  where
     typeRep = Int
-else instance typeableNumber ::
-  Typeable Number where
+else instance
+  typeableNumber :: Typeable Number
+  where
     typeRep = Number
-else instance typeableChar ::
-  Typeable Char where
+else instance
+  typeableChar :: Typeable Char
+  where
     typeRep = Char
-else instance typeableString ::
-  Typeable String where
+else instance
+  typeableString :: Typeable String
+  where
     typeRep = String
-else instance typeableArray ::
-  Typeable a => Typeable (Array a) where
+else instance
+  typeableArray :: Typeable a => Typeable (Array a)
+  where
     typeRep = Array \pack -> pack (typeRep :: TypeRep a)
-else instance typeableFunction ::
-  (Typeable a, Typeable b) => Typeable (Function a b) where
+else instance
+  typeableFunction :: (Typeable a, Typeable b) => Typeable (Function a b)
+  where
     typeRep = Function \pack -> pack (typeRep :: TypeRep a) (typeRep :: TypeRep b)
-else instance typeableGeneric ::
-  (Generic a r, GenericTypeable r) => Typeable a where
+else instance
+  typeableGeneric :: (Generic a r, GenericTypeable r) => Typeable a
+  where
     typeRep = unsafeCoerce (genTypeRep :: TypeRep r)
 
 -- else instance typeableFail ::
