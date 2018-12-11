@@ -1,19 +1,16 @@
-module Type.Reflection where
+module Type.Reflection
+  ( TypeRep
+  , class Typeable, typeRep, typeOf
+  ) where
 
 
-import Prelude
+import Prelude (class Show, show, (<>))
 
 import Data.Generic.Rep (class Generic, Argument, Constructor, NoArguments, NoConstructors, Product, Sum)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 
 import Unsafe.Coerce (unsafeCoerce)
 
-
-quote :: String -> String
-quote s = "\"" <> s <> "\""
-
-group :: String -> String
-group s = "(" <> s <> ")"
 
 
 -- Type representations --------------------------------------------------------
@@ -65,6 +62,7 @@ instance showTypeRep :: Show (TypeRep r) where
   show (Function unpack) = unpack \from to ->
     "(" <> show from <> " -> " <> show to <> ")"
     -- show from <> " -> " <> show to
+
 
 
 -- Typeable --------------------------------------------------------------------
@@ -145,3 +143,14 @@ else instance
 
 typeOf :: forall a. Typeable a => a -> TypeRep a
 typeOf _ = typeRep
+
+
+
+-- Helpers ---------------------------------------------------------------------
+
+
+quote :: String -> String
+quote s = "\"" <> s <> "\""
+
+group :: String -> String
+group s = "(" <> s <> ")"
