@@ -1,7 +1,9 @@
 module Type.Reflection
   ( Fingerprint
   , class Typeable, fingerprint, typeOf
-  , cast
+  , Same(Refl), same, cast
+  , module Type.Equality
+  , module Type.Proxy
   ) where
 
 
@@ -11,7 +13,8 @@ import Data.Generic.Rep (class Generic, Argument, Constructor, NoArguments, NoCo
 import Data.Maybe (Maybe(..))
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 
-import Type.Proxy (Proxy(Proxy))
+import Type.Equality (class TypeEquals, from, to)
+import Type.Proxy (Proxy(..))
 
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -20,6 +23,7 @@ import Unsafe.Coerce (unsafeCoerce)
 -- Type representations --------------------------------------------------------
 
 
+-- | Non-type indexed representation of types.
 data Fingerprint
   = Argument Fingerprint
   | NoArguments
@@ -36,7 +40,7 @@ data Fingerprint
   | Function Fingerprint Fingerprint
 
 
-instance showTypeRep :: Show Fingerprint where
+instance showFingerprint :: Show Fingerprint where
   show (Argument inner)        = "(Argument " <> show inner <> ")"
   show NoArguments             = "NoArguments"
   show (Constructor name prod) = "(Constructor \"" <> name <> "\" " <> show prod <> ")"
@@ -52,7 +56,7 @@ instance showTypeRep :: Show Fingerprint where
   show (Function a b)          = "(" <> show a <> " -> " <> show b <> ")"
 
 
-instance eqTypeRep :: Eq Fingerprint where
+instance eqFingerprint :: Eq Fingerprint where
   eq (Argument l)      (Argument r)      = l  == r
   eq (NoArguments)     (NoArguments)     = true
   eq (Constructor n l) (Constructor m r) = n  == m && l   == r
@@ -151,6 +155,35 @@ typeOf _ = fingerprint (Proxy :: Proxy a)
 -- Casts -----------------------------------------------------------------------
 
 
+-- | `Refl` encodes a proof that type `a` equals type `b`,
+-- | making use of the `TypeEquals a b` class.
+-- | A type safe cast, for example, could be written like:
+-- |
+-- |     cast' :: forall a b. Typeable a => Typeable b => a -> Maybe b
+-- |     cast' x
+-- |       | Just (Refl proof) <- same (Proxy :: Proxy a) (Proxy :: Proxy b) =
+-- |           proof \_ -> Just $ to x
+-- |       | otherwise = Nothing
+-- |
+data Same a b
+  = Refl (forall p. (TypeEquals a b => Unit -> p) -> p)
+
+
+-- | Calculates if two proxies `a` and `b` represent the same type.
+-- | If they do, we give a proof in form of `Just Refl`,
+-- | otherwise we return `Nothing`.
+same :: forall a b. Typeable a => Typeable b => Proxy a -> Proxy b -> Maybe (Same a b)
+same a b
+  | fingerprint a == fingerprint b = Just $ unsafeCoerce Refl
+  | otherwise = Nothing
+
+
+-- | Similar to `same`, but taking concrete values instead of proxies.
+sameOf :: forall a b. Typeable a => Typeable b => a -> b -> Maybe (Same a b)
+sameOf _ _ = same (Proxy :: Proxy a) (Proxy :: Proxy b)
+
+
+-- | Type safe cast from any typeable `a` to typeble `b`.
 cast :: forall a b. Typeable a => Typeable b => a -> Maybe b
 cast x
   | typeOf x == fingerprint (Proxy :: Proxy b) = Just $ unsafeCoerce x
