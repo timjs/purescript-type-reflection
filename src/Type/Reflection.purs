@@ -81,6 +81,10 @@ class Typeable a where
   typeRep :: Proxy a -> TypeRep
 
 
+typeOf :: forall a. Typeable a => a -> TypeRep
+typeOf _ = typeRep (Proxy :: Proxy a)
+
+
 -- Basic types --
 
 instance
@@ -172,10 +176,6 @@ else instance
   typeableGeneric :: (Generic a r, Typeable r) => Typeable a
   where
     typeRep _ = typeRep (Proxy :: Proxy r)
-
-
-typeOf :: forall a. Typeable a => a -> TypeRep
-typeOf _ = typeRep (Proxy :: Proxy a)
 
 
 
