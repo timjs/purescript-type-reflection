@@ -117,53 +117,47 @@ else instance
   where
     typeRep _ = Array (typeRep (Proxy :: Proxy a))
 
-else instance
-  typeableFunction :: (Typeable a, Typeable b) => Typeable (Function a b)
-  where
-    typeRep _ = Function
-      (typeRep (Proxy :: Proxy a))
-      (typeRep (Proxy :: Proxy b))
+-- else instance
+--   typeableFunction :: (Typeable a, Typeable b) => Typeable (Function a b)
+--   where
+--     typeRep _ = Function
+--       (typeRep (Proxy :: Proxy a))
+--       (typeRep (Proxy :: Proxy b))
 
 
 -- Generic types --
 
 else instance
-  typeableArgument :: Typeable a =>
-    Typeable (Argument a)
+  typeableArgument :: Typeable a => Typeable (Argument a)
   where
     typeRep _ = Argument (typeRep (Proxy :: Proxy a))
 
 else instance
-  typeableNoArguments ::
-    Typeable NoArguments
+  typeableNoArguments :: Typeable NoArguments
   where
     typeRep _ = NoArguments
 
 else instance
-  typeableConstructor :: (IsSymbol name, Typeable a) =>
-    Typeable (Constructor name a)
+  typeableConstructor :: (IsSymbol n, Typeable a) => Typeable (Constructor n a)
   where
     typeRep _ = Constructor
-      (reflectSymbol (SProxy :: SProxy name))
+      (reflectSymbol (SProxy :: SProxy n))
       (typeRep (Proxy :: Proxy a))
 
 else instance
-  typeableNoConstructors ::
-    Typeable NoConstructors
+  typeableNoConstructors :: Typeable NoConstructors
   where
     typeRep _ = NoConstructors
 
 else instance
-  typeableSum :: (Typeable a, Typeable b) =>
-    Typeable (Sum a b)
+  typeableSum :: (Typeable a, Typeable b) => Typeable (Sum a b)
   where
     typeRep _ = Sum
       (typeRep (Proxy :: Proxy a))
       (typeRep (Proxy :: Proxy b))
 
 else instance
-  typeableProduct :: (Typeable a, Typeable b) =>
-    Typeable (Product a b)
+  typeableProduct :: (Typeable a, Typeable b) => Typeable (Product a b)
   where
     typeRep _ = Product
       (typeRep (Proxy :: Proxy a))
@@ -172,6 +166,7 @@ else instance
 
 -- Dispatch --
 
+-- | Note: any hand made instances in other modules will overlap with this one.
 else instance
   typeableGeneric :: (Generic a r, Typeable r) => Typeable a
   where
@@ -201,7 +196,7 @@ data Same a b
 -- | otherwise we return `Nothing`.
 same :: forall a b. Typeable a => Typeable b => Proxy a -> Proxy b -> Maybe (Same a b)
 same a b
-  | typeRep a == typeRep b = Just $ unsafeCoerce Refl
+  | typeRep a == typeRep b = Just $ unsafeCoerce Refl -- \proof -> unsafeCoerce $ proof make
   | otherwise = Nothing
 
 
@@ -210,7 +205,13 @@ sameOf :: forall a b. Typeable a => Typeable b => a -> b -> Maybe (Same a b)
 sameOf _ _ = same (Proxy :: Proxy a) (Proxy :: Proxy b)
 
 
--- | Type safe cast from any typeable `a` to typeble `b`.
+cast' :: forall a b. Typeable a => Typeable b => a -> Maybe b
+cast' x
+  | Just (Refl proof) <- same (Proxy :: Proxy a) (Proxy :: Proxy b) =
+      proof \_ -> Just $ to x
+  | otherwise = Nothing
+
+
 cast :: forall a b. Typeable a => Typeable b => a -> Maybe b
 cast x
   | typeOf x == typeRep (Proxy :: Proxy b) = Just $ unsafeCoerce x

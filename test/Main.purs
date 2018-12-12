@@ -1,19 +1,20 @@
 module Main
   ( module Type.Reflection
-  , module Data.Generic.Rep
   , None
   , Only, o
   , Pair, p
   , More, m
   , List, l
   , Tree, t
+  , Dynamic, pack, unpack, d1, d2, da, drun
   ) where
 
 
-import Type.Reflection
+import Prelude
 
-import Prelude ((+))
-import Data.Generic.Rep (class Generic, from, to)
+import Type.Reflection (class TypeEquals, class Typeable, Proxy(..), Same(..), TypeRep, cast, from, same, to, typeOf, typeRep)
+
+import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe)
 
 
@@ -82,7 +83,6 @@ data List a
 
 derive instance genericList :: Generic (List a) _
 
-
 l :: List Int
 l = Cons 1 (Cons 0 Nil)
 
@@ -106,13 +106,37 @@ t = Node (Leaf 1) "a" (Leaf 2)
 -- Existential typing ----------------------------------------------------------
 
 
-data Pack
-  = Pack (forall p. (forall a. Typeable a => a -> p) -> p)
+data Dynamic
+  = Dynamic (forall p. (forall a. Typeable a => a -> p) -> p)
 
 
-pack :: forall a. Typeable a => a -> Pack
-pack x = Pack \make -> make x
+pack :: forall a. Typeable a => a -> Dynamic
+pack x = Dynamic \make -> make x
 
 
-unpack :: forall a. Typeable a => Pack -> Maybe a
-unpack (Pack unmake) = unmake \x -> cast x
+unpack :: forall a. Typeable a => Dynamic -> Maybe a
+unpack (Dynamic unmake) = unmake \x -> cast x
+
+
+d1 :: Dynamic
+d1 = pack 1
+
+d2 :: Dynamic
+d2 = pack 2
+
+da :: Dynamic
+da = pack [3, 4]
+
+-- df :: Dynamic
+-- df = pack f
+--   where
+--     f x = x * 2
+--     g x y = x + y * 2
+--     h (Pair x y) = x + y * 2
+
+drun :: Maybe (Array Int)
+drun = ado
+  x <- unpack d1
+  y <- unpack d2
+  a <- unpack da
+  in [x, y] <> a
