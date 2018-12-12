@@ -1,6 +1,6 @@
 module Type.Reflection
-  ( Fingerprint
-  , class Typeable, fingerprint, typeOf
+  ( TypeRep
+  , class Typeable, typeRep, typeOf
   , Same(Refl), same, cast
   , module Type.Equality
   , module Type.Proxy
@@ -24,23 +24,23 @@ import Unsafe.Coerce (unsafeCoerce)
 
 
 -- | Non-type indexed representation of types.
-data Fingerprint
-  = Argument Fingerprint
+data TypeRep
+  = Argument TypeRep
   | NoArguments
-  | Constructor String Fingerprint
+  | Constructor String TypeRep
   | NoConstructors
-  | Product Fingerprint Fingerprint
-  | Sum Fingerprint Fingerprint
+  | Product TypeRep TypeRep
+  | Sum TypeRep TypeRep
   | Boolean
   | Int
   | Number
   | Char
   | String
-  | Array Fingerprint
-  | Function Fingerprint Fingerprint
+  | Array TypeRep
+  | Function TypeRep TypeRep
 
 
-instance showFingerprint :: Show Fingerprint where
+instance showTypeRep :: Show TypeRep where
   show (Argument inner)        = "(Argument " <> show inner <> ")"
   show NoArguments             = "NoArguments"
   show (Constructor name prod) = "(Constructor \"" <> name <> "\" " <> show prod <> ")"
@@ -56,7 +56,7 @@ instance showFingerprint :: Show Fingerprint where
   show (Function a b)          = "(" <> show a <> " -> " <> show b <> ")"
 
 
-instance eqFingerprint :: Eq Fingerprint where
+instance eqTypeRep :: Eq TypeRep where
   eq (Argument l)      (Argument r)      = l  == r
   eq (NoArguments)     (NoArguments)     = true
   eq (Constructor n l) (Constructor m r) = n  == m && l   == r
@@ -78,77 +78,77 @@ instance eqFingerprint :: Eq Fingerprint where
 
 
 class Typeable a where
-  fingerprint :: Proxy a -> Fingerprint
+  typeRep :: Proxy a -> TypeRep
 
 
 instance
   typeableBoolean :: Typeable Boolean
   where
-    fingerprint _ = Boolean
+    typeRep _ = Boolean
 else instance
   typeableInt :: Typeable Int
   where
-    fingerprint _ = Int
+    typeRep _ = Int
 else instance
   typeableNumber :: Typeable Number
   where
-    fingerprint _ = Number
+    typeRep _ = Number
 else instance
   typeableChar :: Typeable Char
   where
-    fingerprint _ = Char
+    typeRep _ = Char
 else instance
   typeableString :: Typeable String
   where
-    fingerprint _ = String
+    typeRep _ = String
 else instance
   typeableArray :: Typeable a => Typeable (Array a)
   where
-    fingerprint _ = Array (fingerprint (Proxy :: Proxy a))
+    typeRep _ = Array (typeRep (Proxy :: Proxy a))
 else instance
   typeableFunction :: (Typeable a, Typeable b) => Typeable (Function a b)
   where
-    fingerprint _ = Function (fingerprint (Proxy :: Proxy a)) (fingerprint (Proxy :: Proxy b))
+    typeRep _ = Function (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))
 
 else instance
   typeableArgument :: Typeable a =>
     Typeable (Argument a)
   where
-    fingerprint _ = Argument (fingerprint (Proxy :: Proxy a))
+    typeRep _ = Argument (typeRep (Proxy :: Proxy a))
 else instance
   typeableNoArguments ::
     Typeable NoArguments
   where
-    fingerprint _ = NoArguments
+    typeRep _ = NoArguments
 else instance
   typeableConstructor :: (IsSymbol name, Typeable a) =>
     Typeable (Constructor name a)
   where
-    fingerprint _ = Constructor (reflectSymbol (SProxy :: SProxy name)) (fingerprint (Proxy :: Proxy a))
+    typeRep _ = Constructor (reflectSymbol (SProxy :: SProxy name)) (typeRep (Proxy :: Proxy a))
 else instance
   typeableNoConstructors ::
     Typeable NoConstructors
   where
-    fingerprint _ = NoConstructors
+    typeRep _ = NoConstructors
 else instance
   typeableSum :: (Typeable a, Typeable b) =>
     Typeable (Sum a b)
   where
-    fingerprint _ = Sum (fingerprint (Proxy :: Proxy a)) (fingerprint (Proxy :: Proxy b))
+    typeRep _ = Sum (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))
 else instance
   typeableProduct :: (Typeable a, Typeable b) =>
     Typeable (Product a b)
   where
-    fingerprint _ = Product (fingerprint (Proxy :: Proxy a)) (fingerprint (Proxy :: Proxy b))
+    typeRep _ = Product (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))
 
 else instance
   typeableGeneric :: (Generic a r, Typeable r) => Typeable a
   where
-    fingerprint _ = unsafeCoerce (fingerprint (Proxy :: Proxy r))
+    typeRep _ = unsafeCoerce (typeRep (Proxy :: Proxy r))
 
 
-typeOf :: forall a. Typeable a => a -> Fingerprint
-typeOf _ = fingerprint (Proxy :: Proxy a)
+typeOf :: forall a. Typeable a => a -> TypeRep
+typeOf _ = typeRep (Proxy :: Proxy a)
 
 
 
@@ -174,7 +174,7 @@ data Same a b
 -- | otherwise we return `Nothing`.
 same :: forall a b. Typeable a => Typeable b => Proxy a -> Proxy b -> Maybe (Same a b)
 same a b
-  | fingerprint a == fingerprint b = Just $ unsafeCoerce Refl
+  | typeRep a == typeRep b = Just $ unsafeCoerce Refl
   | otherwise = Nothing
 
 
@@ -186,5 +186,5 @@ sameOf _ _ = same (Proxy :: Proxy a) (Proxy :: Proxy b)
 -- | Type safe cast from any typeable `a` to typeble `b`.
 cast :: forall a b. Typeable a => Typeable b => a -> Maybe b
 cast x
-  | typeOf x == fingerprint (Proxy :: Proxy b) = Just $ unsafeCoerce x
+  | typeOf x == typeRep (Proxy :: Proxy b) = Just $ unsafeCoerce x
   | otherwise = Nothing
