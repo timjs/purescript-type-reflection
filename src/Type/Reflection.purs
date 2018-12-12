@@ -81,70 +81,97 @@ class Typeable a where
   typeRep :: Proxy a -> TypeRep
 
 
+-- Basic types --
+
 instance
   typeableBoolean :: Typeable Boolean
   where
     typeRep _ = Boolean
+
 else instance
   typeableInt :: Typeable Int
   where
     typeRep _ = Int
+
 else instance
   typeableNumber :: Typeable Number
   where
     typeRep _ = Number
+
 else instance
   typeableChar :: Typeable Char
   where
     typeRep _ = Char
+
 else instance
   typeableString :: Typeable String
   where
     typeRep _ = String
+
 else instance
   typeableArray :: Typeable a => Typeable (Array a)
   where
     typeRep _ = Array (typeRep (Proxy :: Proxy a))
+
 else instance
   typeableFunction :: (Typeable a, Typeable b) => Typeable (Function a b)
   where
-    typeRep _ = Function (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))
+    typeRep _ = Function
+      (typeRep (Proxy :: Proxy a))
+      (typeRep (Proxy :: Proxy b))
+
+
+-- Generic types --
 
 else instance
   typeableArgument :: Typeable a =>
     Typeable (Argument a)
   where
     typeRep _ = Argument (typeRep (Proxy :: Proxy a))
+
 else instance
   typeableNoArguments ::
     Typeable NoArguments
   where
     typeRep _ = NoArguments
+
 else instance
   typeableConstructor :: (IsSymbol name, Typeable a) =>
     Typeable (Constructor name a)
   where
-    typeRep _ = Constructor (reflectSymbol (SProxy :: SProxy name)) (typeRep (Proxy :: Proxy a))
+    typeRep _ = Constructor
+      (reflectSymbol (SProxy :: SProxy name))
+      (typeRep (Proxy :: Proxy a))
+
 else instance
   typeableNoConstructors ::
     Typeable NoConstructors
   where
     typeRep _ = NoConstructors
+
 else instance
   typeableSum :: (Typeable a, Typeable b) =>
     Typeable (Sum a b)
   where
-    typeRep _ = Sum (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))
+    typeRep _ = Sum
+      (typeRep (Proxy :: Proxy a))
+      (typeRep (Proxy :: Proxy b))
+
 else instance
   typeableProduct :: (Typeable a, Typeable b) =>
     Typeable (Product a b)
   where
-    typeRep _ = Product (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))
+    typeRep _ = Product
+      (typeRep (Proxy :: Proxy a))
+      (typeRep (Proxy :: Proxy b))
+
+
+-- Dispatch --
 
 else instance
   typeableGeneric :: (Generic a r, Typeable r) => Typeable a
   where
-    typeRep _ = unsafeCoerce (typeRep (Proxy :: Proxy r))
+    typeRep _ = typeRep (Proxy :: Proxy r)
 
 
 typeOf :: forall a. Typeable a => a -> TypeRep
