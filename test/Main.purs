@@ -6,16 +6,15 @@ module Main
   , More, m
   , List, l
   , Tree, t
-  , Dynamic, pack, unpack, d1, d2, da, drun
+  , Dynamic, pack, unpack, d1, d2, da, run_a
   ) where
 
 
 import Prelude
 
-import Type.Reflection (class TypeEquals, class Typeable, Proxy(..), Same(..), TypeRep, cast, from, same, to, typeOf, typeRep)
-
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe)
+import Type.Reflection (class TypeEquals, class Typeable, Proxy(..), Same, TypeRep, cast, cast', from, same, to, typeOf, typeRep)
 
 
 
@@ -115,7 +114,7 @@ pack x = Dynamic \make -> make x
 
 
 unpack :: forall a. Typeable a => Dynamic -> Maybe a
-unpack (Dynamic unmake) = unmake \x -> cast x
+unpack (Dynamic unmake) = unmake \x -> cast' x
 
 
 d1 :: Dynamic
@@ -134,9 +133,16 @@ da = pack [3, 4]
 --     g x y = x + y * 2
 --     h (Pair x y) = x + y * 2
 
-drun :: Maybe (Array Int)
-drun = ado
+run_a :: Maybe (Array Int)
+run_a = ado
   x <- unpack d1
   y <- unpack d2
   a <- unpack da
   in [x, y] <> a
+
+-- run_f :: Maybe Int
+-- run_f = ado
+--   x <- unpack d1
+--   y <- unpack d2
+--   f <- unpack df :: Maybe (Int -> Int)
+--   in f x

@@ -1,7 +1,7 @@
 module Type.Reflection
   ( TypeRep
   , class Typeable, typeRep, typeOf
-  , Same(Refl), same, cast
+  , Same, refl, same, cast, cast'
   , module Type.Equality
   , module Type.Proxy
   ) where
@@ -191,12 +191,22 @@ data Same a b
   = Refl (forall p. (TypeEquals a b => Unit -> p) -> p)
 
 
+instance sameShow :: Show (Same a b) where
+  show (Refl _) = "Refl"
+
+
+refl :: forall a. TypeEquals a a => Same a a
+refl = Refl \pack -> pack unit
+
+-- foreign import refl' :: forall a. Same a a
+
+
 -- | Calculates if two proxies `a` and `b` represent the same type.
 -- | If they do, we give a proof in form of `Just Refl`,
 -- | otherwise we return `Nothing`.
 same :: forall a b. Typeable a => Typeable b => Proxy a -> Proxy b -> Maybe (Same a b)
 same a b
-  | typeRep a == typeRep b = Just $ unsafeCoerce Refl -- \proof -> unsafeCoerce $ proof make
+  | typeRep a == typeRep b = Just $ unsafeCoerce refl
   | otherwise = Nothing
 
 
