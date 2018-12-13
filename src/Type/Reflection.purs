@@ -1,9 +1,8 @@
 module Type.Reflection
   ( TypeRep
   , class Typeable, typeRep, typeOf
-  , Same, refl, same, cast, cast'
+  , Same, refl, decide, decideFrom, cast
   , module Type.Equality
-  , module Type.Proxy
   ) where
 
 
@@ -165,14 +164,6 @@ else instance
 
 -- | `Refl` encodes a proof that type `a` equals type `b`,
 -- | making use of the `TypeEquals a b` class.
--- | A type safe cast, for example, could be written like:
--- |
--- |     cast' :: forall a b. Typeable a => Typeable b => a -> Maybe b
--- |     cast' x
--- |       | Just (Refl proof) <- same (Proxy :: Proxy a) (Proxy :: Proxy b) =
--- |           proof \_ -> Just $ to x
--- |       | otherwise = Nothing
--- |
 data Same a b
   = Refl (forall p. (TypeEquals a b => Unit -> p) -> p)
 
@@ -187,23 +178,30 @@ refl = Refl \pack -> pack unit
 -- foreign import refl' :: forall a. Same a a
 
 
--- | Calculates if two proxies `a` and `b` represent the same type.
+-- | Decide if two typeable types `a` and `b` are the same.
 -- | If they do, we give a proof in form of `Just Refl`,
 -- | otherwise we return `Nothing`.
-same :: forall a b. Typeable a => Typeable b => Proxy a -> Proxy b -> Maybe (Same a b)
-same a b
-  | typeRep a == typeRep b = Just $ unsafeCoerce refl
+-- | A type safe cast, for example, could be written like:
+-- |
+-- |     cast' :: forall a b. Typeable a => Typeable b => a -> Maybe b
+-- |     cast' x
+-- |       | Just (Refl proof) <- decide :: Maybe (Same a b) =
+-- |           proof \_ -> Just $ to x
+-- |       | otherwise = Nothing
+decide :: forall a b. Typeable a => Typeable b => Maybe (Same a b)
+decide
+  | typeRep (Proxy :: Proxy a) == typeRep (Proxy :: Proxy b) = Just $ unsafeCoerce refl
   | otherwise = Nothing
 
 
--- | Similar to `same`, but taking concrete values instead of proxies.
-sameOf :: forall a b. Typeable a => Typeable b => a -> b -> Maybe (Same a b)
-sameOf _ _ = same (Proxy :: Proxy a) (Proxy :: Proxy b)
+-- | Similar to `decide`, but uses concrete values to determine the types.
+decideFrom :: forall a b. Typeable a => Typeable b => a -> b -> Maybe (Same a b)
+decideFrom _ _ = decide
 
 
 cast' :: forall a b. Typeable a => Typeable b => a -> Maybe b
 cast' x
-  | Just (Refl proof) <- same (Proxy :: Proxy a) (Proxy :: Proxy b) =
+  | Just (Refl proof) <- decide :: Maybe (Same a b) =
       proof \_ -> Just $ to x
   | otherwise = Nothing
 

@@ -14,7 +14,8 @@ import Prelude
 
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe)
-import Type.Reflection (class TypeEquals, class Typeable, Proxy(..), Same, TypeRep, cast, cast', from, same, to, typeOf, typeRep)
+
+import Type.Reflection
 
 
 
