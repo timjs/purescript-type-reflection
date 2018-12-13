@@ -6,7 +6,7 @@ module Main
   , More, m
   , List, l
   , Tree, t
-  , Dynamic, pack, unpack, d1, d2, da, run_a
+  , Dynamic, pack, unpack, d1, d2, da, df, run_a, run_f
   ) where
 
 
@@ -114,7 +114,7 @@ pack x = Dynamic \make -> make x
 
 
 unpack :: forall a. Typeable a => Dynamic -> Maybe a
-unpack (Dynamic unmake) = unmake \x -> cast' x
+unpack (Dynamic unmake) = unmake \x -> cast x
 
 
 d1 :: Dynamic
@@ -126,12 +126,12 @@ d2 = pack 2
 da :: Dynamic
 da = pack [3, 4]
 
--- df :: Dynamic
--- df = pack f
---   where
---     f x = x * 2
---     g x y = x + y * 2
---     h (Pair x y) = x + y * 2
+df :: Dynamic
+df = pack f2
+  where
+    f1 x = x * 2
+    f2 x y = x + y * 2
+    fp (Pair x y) = x + y * 2
 
 run_a :: Maybe (Array Int)
 run_a = ado
@@ -140,9 +140,9 @@ run_a = ado
   a <- unpack da
   in [x, y] <> a
 
--- run_f :: Maybe Int
--- run_f = ado
---   x <- unpack d1
---   y <- unpack d2
---   f <- unpack df :: Maybe (Int -> Int)
---   in f x
+run_f :: Maybe Int
+run_f = ado
+  x <- unpack d1
+  y <- unpack d2
+  f <- unpack df :: Maybe (Int -> Int -> Int)
+  in f x y

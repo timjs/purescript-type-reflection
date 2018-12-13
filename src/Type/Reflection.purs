@@ -11,7 +11,6 @@ import Prelude
 
 import Data.Generic.Rep (class Generic, Argument, Constructor, NoArguments, NoConstructors, Product, Sum)
 import Data.Maybe (Maybe(..))
-import Data.Foldable (intercalate)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 
 import Type.Equality (class TypeEquals, from, to)
@@ -38,7 +37,7 @@ data TypeRep
   | Char
   | String
   | Array TypeRep
-  | Function (Array TypeRep)
+  | Function TypeRep TypeRep
 
 derive instance eqTypeRep :: Eq TypeRep
 derive instance ordTypeRep :: Ord TypeRep
@@ -57,7 +56,7 @@ instance showTypeRep :: Show TypeRep where
   show Char                    = "Char"
   show String                  = "String"
   show (Array inner)           = "(Array " <> show inner <> ")"
-  show (Function args)         = "(" <> intercalate " -> " (map show args) <> ")"
+  show (Function a b)          = "(" <> show a <> " -> " <> show b <> ")"
 
 
 
@@ -104,12 +103,12 @@ else instance
   where
     typeRep _ = Array (typeRep (Proxy :: Proxy a))
 
--- else instance
---   typeableFunction :: (Typeable a, Typeable b) => Typeable (Function a b)
---   where
---     typeRep _ = Function
---       (typeRep (Proxy :: Proxy a))
---       (typeRep (Proxy :: Proxy b))
+else instance
+  typeableFunction :: (Typeable a, Typeable b) => Typeable (Function a b)
+  where
+    typeRep _ = Function
+      (typeRep (Proxy :: Proxy a))
+      (typeRep (Proxy :: Proxy b))
 
 
 -- Generic types --
