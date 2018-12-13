@@ -11,6 +11,7 @@ import Prelude
 
 import Data.Generic.Rep (class Generic, Argument, Constructor, NoArguments, NoConstructors, Product, Sum)
 import Data.Maybe (Maybe(..))
+import Data.Foldable (intercalate)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 
 import Type.Equality (class TypeEquals, from, to)
@@ -37,7 +38,10 @@ data TypeRep
   | Char
   | String
   | Array TypeRep
-  | Function TypeRep TypeRep
+  | Function (Array TypeRep)
+
+derive instance eqTypeRep :: Eq TypeRep
+derive instance ordTypeRep :: Ord TypeRep
 
 
 instance showTypeRep :: Show TypeRep where
@@ -53,24 +57,7 @@ instance showTypeRep :: Show TypeRep where
   show Char                    = "Char"
   show String                  = "String"
   show (Array inner)           = "(Array " <> show inner <> ")"
-  show (Function a b)          = "(" <> show a <> " -> " <> show b <> ")"
-
-
-instance eqTypeRep :: Eq TypeRep where
-  eq (Argument l)      (Argument r)      = l  == r
-  eq (NoArguments)     (NoArguments)     = true
-  eq (Constructor n l) (Constructor m r) = n  == m && l   == r
-  eq (NoConstructors)  (NoConstructors)  = true
-  eq (Product la lb)   (Product ra rb)   = la == lb && ra == rb
-  eq (Sum la lb)       (Sum ra rb)       = la == lb && ra == rb
-  eq (Boolean)         (Boolean)         = true
-  eq (Int)             (Int)             = true
-  eq (Number)          (Number)          = true
-  eq (Char)            (Char)            = true
-  eq (String)          (String)          = true
-  eq (Array l)         (Array r)         = l  == r
-  eq (Function la lb)  (Function ra rb)  = la == ra && ra == rb
-  eq _ _                                 = false
+  show (Function args)         = "(" <> intercalate " -> " (map show args) <> ")"
 
 
 
