@@ -1,6 +1,6 @@
 module Type.Reflection
-  ( TypeRep
-  , class Typeable, typeRep, typeOf
+  ( Reflection
+  , class IsType, reflect, typeOf
   , Same, refl, decide, decideFrom, cast
   , module Type.Equality
   ) where
@@ -23,26 +23,26 @@ import Unsafe.Coerce (unsafeCoerce)
 
 
 -- | Non-type indexed representation of types.
-data TypeRep
-  = Argument TypeRep
+data Reflection
+  = Argument Reflection
   | NoArguments
-  | Constructor String TypeRep
+  | Constructor String Reflection
   | NoConstructors
-  | Product TypeRep TypeRep
-  | Sum TypeRep TypeRep
+  | Product Reflection Reflection
+  | Sum Reflection Reflection
   | Boolean
   | Int
   | Number
   | Char
   | String
-  | Array TypeRep
-  | Function TypeRep TypeRep
+  | Array Reflection
+  | Function Reflection Reflection
 
-derive instance eqTypeRep :: Eq TypeRep
-derive instance ordTypeRep :: Ord TypeRep
+derive instance eqTypeRep :: Eq Reflection
+derive instance ordTypeRep :: Ord Reflection
 
 
-instance showTypeRep :: Show TypeRep where
+instance showTypeRep :: Show Reflection where
   show (Argument inner)        = "(Argument " <> show inner <> ")"
   show NoArguments             = "NoArguments"
   show (Constructor name prod) = "(Constructor \"" <> name <> "\" " <> show prod <> ")"
@@ -59,103 +59,104 @@ instance showTypeRep :: Show TypeRep where
 
 
 
--- Typeable --------------------------------------------------------------------
+-- IsType --------------------------------------------------------------------
 
 
-class Typeable a where
-  typeRep :: Proxy a -> TypeRep
+class IsType a where
+  reflect :: Proxy a -> Reflection
 
 
-typeOf :: forall a. Typeable a => a -> TypeRep
-typeOf _ = typeRep (Proxy :: Proxy a)
+typeOf :: forall a. IsType a => a -> Reflection
+typeOf _ = reflect (Proxy :: Proxy a)
+
 
 
 -- Basic types --
 
 instance
-  typeableBoolean :: Typeable Boolean
+  isTypeBoolean :: IsType Boolean
   where
-    typeRep _ = Boolean
+    reflect _ = Boolean
 
 else instance
-  typeableInt :: Typeable Int
+  isTypeInt :: IsType Int
   where
-    typeRep _ = Int
+    reflect _ = Int
 
 else instance
-  typeableNumber :: Typeable Number
+  isTypeNumber :: IsType Number
   where
-    typeRep _ = Number
+    reflect _ = Number
 
 else instance
-  typeableChar :: Typeable Char
+  isTypeChar :: IsType Char
   where
-    typeRep _ = Char
+    reflect _ = Char
 
 else instance
-  typeableString :: Typeable String
+  isTypeString :: IsType String
   where
-    typeRep _ = String
+    reflect _ = String
 
 else instance
-  typeableArray :: Typeable a => Typeable (Array a)
+  isTypeArray :: IsType a => IsType (Array a)
   where
-    typeRep _ = Array (typeRep (Proxy :: Proxy a))
+    reflect _ = Array (reflect (Proxy :: Proxy a))
 
 else instance
-  typeableFunction :: (Typeable a, Typeable b) => Typeable (Function a b)
+  isTypeFunction :: (IsType a, IsType b) => IsType (Function a b)
   where
-    typeRep _ = Function
-      (typeRep (Proxy :: Proxy a))
-      (typeRep (Proxy :: Proxy b))
+    reflect _ = Function
+      (reflect (Proxy :: Proxy a))
+      (reflect (Proxy :: Proxy b))
 
 
 -- Generic types --
 
 else instance
-  typeableArgument :: Typeable a => Typeable (Argument a)
+  isTypeArgument :: IsType a => IsType (Argument a)
   where
-    typeRep _ = Argument (typeRep (Proxy :: Proxy a))
+    reflect _ = Argument (reflect (Proxy :: Proxy a))
 
 else instance
-  typeableNoArguments :: Typeable NoArguments
+  isTypeNoArguments :: IsType NoArguments
   where
-    typeRep _ = NoArguments
+    reflect _ = NoArguments
 
 else instance
-  typeableConstructor :: (IsSymbol n, Typeable a) => Typeable (Constructor n a)
+  isTypeConstructor :: (IsSymbol n, IsType a) => IsType (Constructor n a)
   where
-    typeRep _ = Constructor
+    reflect _ = Constructor
       (reflectSymbol (SProxy :: SProxy n))
-      (typeRep (Proxy :: Proxy a))
+      (reflect (Proxy :: Proxy a))
 
 else instance
-  typeableNoConstructors :: Typeable NoConstructors
+  isTypeNoConstructors :: IsType NoConstructors
   where
-    typeRep _ = NoConstructors
+    reflect _ = NoConstructors
 
 else instance
-  typeableSum :: (Typeable a, Typeable b) => Typeable (Sum a b)
+  isTypeSum :: (IsType a, IsType b) => IsType (Sum a b)
   where
-    typeRep _ = Sum
-      (typeRep (Proxy :: Proxy a))
-      (typeRep (Proxy :: Proxy b))
+    reflect _ = Sum
+      (reflect (Proxy :: Proxy a))
+      (reflect (Proxy :: Proxy b))
 
 else instance
-  typeableProduct :: (Typeable a, Typeable b) => Typeable (Product a b)
+  isTypeProduct :: (IsType a, IsType b) => IsType (Product a b)
   where
-    typeRep _ = Product
-      (typeRep (Proxy :: Proxy a))
-      (typeRep (Proxy :: Proxy b))
+    reflect _ = Product
+      (reflect (Proxy :: Proxy a))
+      (reflect (Proxy :: Proxy b))
 
 
 -- Dispatch --
 
 -- | Note: any hand made instances in other modules will overlap with this one.
 else instance
-  typeableGeneric :: (Generic a r, Typeable r) => Typeable a
+  isTypeGeneric :: (Generic a r, IsType r) => IsType a
   where
-    typeRep _ = typeRep (Proxy :: Proxy r)
+    reflect _ = reflect (Proxy :: Proxy r)
 
 
 
@@ -193,31 +194,31 @@ castWith (Refl proof) x = proof \_ -> to x
 -- |
 -- | A type safe cast, for example, could be written like:
 -- |
--- |     cast :: forall a b. Typeable a => Typeable b => a -> Maybe b
+-- |     cast :: forall a b. IsType a => IsType b => a -> Maybe b
 -- |     cast x
 -- |       | Just proof <- decide :: Maybe (Same a b) = Just $ castWith proof x
 -- |       | otherwise = Nothing
 -- |
-decide :: forall a b. Typeable a => Typeable b => Maybe (Same a b)
+decide :: forall a b. IsType a => IsType b => Maybe (Same a b)
 decide
-  | typeRep (Proxy :: Proxy a) == typeRep (Proxy :: Proxy b) = Just $ unsafeCoerce refl
+  | reflect (Proxy :: Proxy a) == reflect (Proxy :: Proxy b) = Just $ unsafeCoerce refl
   | otherwise = Nothing
 
 
 -- | Similar to `decide`, but uses concrete values to determine the type variables.
-decideFrom :: forall a b. Typeable a => Typeable b => a -> b -> Maybe (Same a b)
+decideFrom :: forall a b. IsType a => IsType b => a -> b -> Maybe (Same a b)
 decideFrom _ _ = decide
 
 
--- | Type safe cast from type `a` to type `b` using Typeable information.
-cast :: forall a b. Typeable a => Typeable b => a -> Maybe b
+-- | Type safe cast from type `a` to type `b` using IsType information.
+cast :: forall a b. IsType a => IsType b => a -> Maybe b
 cast x
   | Just proof <- decide :: Maybe (Same a b) = Just $ castWith proof x
   | otherwise = Nothing
 
 
 -- | (Faster?) alternative to `cast`, using an unsafe coerce internally.
-cast' :: forall a b. Typeable a => Typeable b => a -> Maybe b
+cast' :: forall a b. IsType a => IsType b => a -> Maybe b
 cast' x
-  | typeOf x == typeRep (Proxy :: Proxy b) = Just $ unsafeCoerce x
+  | typeOf x == reflect (Proxy :: Proxy b) = Just $ unsafeCoerce x
   | otherwise = Nothing
