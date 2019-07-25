@@ -16,6 +16,7 @@ module Main
   , d2
   , da
   , df
+  , dp
   , run_a
   , run_f
   , fst'
@@ -24,7 +25,7 @@ module Main
 import Prelude
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
-import Data.Anything (class Reflect, class TypeEquals, Anything, Proxy(..), Reflection, Same, cast, decide, decideFrom, from, pack, refl, reflect, to, typeOf, unpack)
+import Data.Anything (class IsType, class TypeEquals, Anything, Proxy(..), Reflection, Same, cast, decide, decideFrom, from, pack, refl, reflect, to, typeOf, unpack)
 
 -- Some types ------------------------------------------------------------------
 -- None --
@@ -95,22 +96,24 @@ da :: Anything
 da = pack [3, 4]
 
 df :: Anything
-df = pack f2
+df = pack (f3 3)
   where
   f1 x = x * 2
 
   f2 x y = x + y * 2
 
+  f3 x y z = x + y + z * 2
+
   fp (Pair x y) = x + y * 2
 
-pack_pair :: forall a b. Reflect a => Reflect b => Pair a b -> Anything
+pack_pair :: forall a b. IsType a => IsType b => Pair a b -> Anything
 pack_pair = pack
 
-fst' :: forall a b. Reflect a => Reflect b => Proxy b -> Anything -> Maybe a
-fst' _ d = case unpack d :: Maybe (Pair a b) of
-  Just (Pair x y) -> Just x
-  Nothing -> Nothing
--- case unpack_pair d :: forall a' b'. Reflect a' => Reflect b' => Maybe (Pair a' b') of
+fst' :: forall a b. IsType a => IsType b => Proxy b -> Anything -> Maybe a
+fst' _ d
+  | Just (Pair x y) <- (unpack d :: Maybe (Pair a b)) = Just x
+  | otherwise = Nothing
+-- case unpack_pair d :: forall a' b'. IsType a' => IsType b' => Maybe (Pair a' b') of
 
 -- Just (Pair x y) -> ?h
 --   -- | decide :: Maybe (Same a a') -> Just x
@@ -123,14 +126,14 @@ fst' _ d = case unpack d :: Maybe (Pair a b) of
 --   case un dyn of
 --     Just p -> ?h1
 --     Nothing -> Nothing
---   -- case unpack dyn :: forall a b. Reflect a => Reflect b => Maybe (Pair a b) of
+--   -- case unpack dyn :: forall a b. IsType a => IsType b => Maybe (Pair a b) of
 --   -- -- case ?h of
 --   --   Just (Pair a b) -> Just ?h --(pack a)
 --   --   Nothing -> Nothing
 --   where
---     un :: Reflect a => Reflect b => Anything -> Maybe (Pair a b)
+--     un :: IsType a => IsType b => Anything -> Maybe (Pair a b)
 --     un d = unpack d
---     re :: Reflect a => Pair a b -> Anything
+--     re :: IsType a => Pair a b -> Anything
 --     re (Pair x y) = pack x
 run_a :: Maybe (Array Int)
 run_a = ado
