@@ -1,21 +1,23 @@
 module Main
-  ( module Type.Reflection
+  ( module Data.Anything
+  , module Data.Maybe
   , None
-  , Only, o
-  , Pair, p
-  , More, m
-  , List, l
-  , Tree, t
-  , Dynamic, pack, unpack, d1, d2, da, df, run_a, run_f
+  , Only(..), o
+  , Pair(..), p
+  , More(..), m
+  , List(..), l
+  , Tree(..), t
+  , d1, d2, da, df, run_a, run_f
+  , fst'
   ) where
 
 
 import Prelude
 
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(..))
 
-import Type.Reflection
+import Data.Anything (class Reflect, class TypeEquals, Anything, Proxy(..), Reflection, Same, cast, decide, decideFrom, from, pack, refl, reflect, to, typeOf, unpack)
 
 
 
@@ -106,33 +108,58 @@ t = Node (Leaf 1) "a" (Leaf 2)
 -- Existential typing ----------------------------------------------------------
 
 
-data Dynamic
-  = Dynamic (forall p. (forall a. Typeable a => a -> p) -> p)
-
-
-pack :: forall a. Typeable a => a -> Dynamic
-pack x = Dynamic \make -> make x
-
-
-unpack :: forall a. Typeable a => Dynamic -> Maybe a
-unpack (Dynamic unmake) = unmake \x -> cast x
-
-
-d1 :: Dynamic
+d1 :: Anything
 d1 = pack 1
 
-d2 :: Dynamic
+d2 :: Anything
 d2 = pack 2
 
-da :: Dynamic
+dp :: Anything
+dp = pack (Pair 1 2)
+
+da :: Anything
 da = pack [3, 4]
 
-df :: Dynamic
+df :: Anything
 df = pack f2
   where
     f1 x = x * 2
     f2 x y = x + y * 2
     fp (Pair x y) = x + y * 2
+
+
+pack_pair :: forall a b. Reflect a => Reflect b => Pair a b -> Anything
+pack_pair = pack
+
+fst' :: forall a b. Reflect a => Reflect b => Proxy b -> Anything -> Maybe a
+fst' _ d =
+  -- case unpack_pair d :: forall a' b'. Reflect a' => Reflect b' => Maybe (Pair a' b') of
+  case unpack d :: Maybe (Pair a b) of
+    Just (Pair x y) -> Just x
+    Nothing -> Nothing
+    -- Just (Pair x y) -> ?h
+    --   -- | decide :: Maybe (Same a a') -> Just x
+    -- Nothing -> Nothing
+
+  -- where
+  --   unpack_pair :: Anything -> Maybe (Pair a b)
+  --   unpack_pair = unpack
+
+-- fst' :: forall a b. Anything -> Maybe Anything
+-- fst' dyn =
+--   case un dyn of
+--     Just p -> ?h1
+--     Nothing -> Nothing
+--   -- case unpack dyn :: forall a b. Reflect a => Reflect b => Maybe (Pair a b) of
+--   -- -- case ?h of
+--   --   Just (Pair a b) -> Just ?h --(pack a)
+--   --   Nothing -> Nothing
+--   where
+--     un :: Reflect a => Reflect b => Anything -> Maybe (Pair a b)
+--     un d = unpack d
+--     re :: Reflect a => Pair a b -> Anything
+--     re (Pair x y) = pack x
+
 
 run_a :: Maybe (Array Int)
 run_a = ado
