@@ -1,8 +1,9 @@
 module Type.Reflection
   ( Reflection
-  , class IsType, reflect, typeOf
+  , class Reflect, reflect, typeOf
   , Same, refl, decide, decideFrom, cast
   , module Type.Equality
+  , module Type.Proxy
   ) where
 
 
@@ -38,11 +39,11 @@ data Reflection
   | Array Reflection
   | Function Reflection Reflection
 
-derive instance eqTypeRep :: Eq Reflection
-derive instance ordTypeRep :: Ord Reflection
+derive instance eqReflection :: Eq Reflection
+derive instance ordReflection :: Ord Reflection
 
 
-instance showTypeRep :: Show Reflection where
+instance showReflection :: Show Reflection where
   show (Argument inner)        = "(Argument " <> show inner <> ")"
   show NoArguments             = "NoArguments"
   show (Constructor name prod) = "(Constructor \"" <> name <> "\" " <> show prod <> ")"
@@ -59,14 +60,14 @@ instance showTypeRep :: Show Reflection where
 
 
 
--- IsType --------------------------------------------------------------------
+-- Reflect --------------------------------------------------------------------
 
 
-class IsType a where
+class Reflect a where
   reflect :: Proxy a -> Reflection
 
 
-typeOf :: forall a. IsType a => a -> Reflection
+typeOf :: forall a. Reflect a => a -> Reflection
 typeOf _ = reflect (Proxy :: Proxy a)
 
 
@@ -74,37 +75,37 @@ typeOf _ = reflect (Proxy :: Proxy a)
 -- Basic types --
 
 instance
-  isTypeBoolean :: IsType Boolean
+  reflectBoolean :: Reflect Boolean
   where
     reflect _ = Boolean
 
 else instance
-  isTypeInt :: IsType Int
+  reflectInt :: Reflect Int
   where
     reflect _ = Int
 
 else instance
-  isTypeNumber :: IsType Number
+  reflectNumber :: Reflect Number
   where
     reflect _ = Number
 
 else instance
-  isTypeChar :: IsType Char
+  reflectChar :: Reflect Char
   where
     reflect _ = Char
 
 else instance
-  isTypeString :: IsType String
+  reflectString :: Reflect String
   where
     reflect _ = String
 
 else instance
-  isTypeArray :: IsType a => IsType (Array a)
+  reflectArray :: Reflect a => Reflect (Array a)
   where
     reflect _ = Array (reflect (Proxy :: Proxy a))
 
 else instance
-  isTypeFunction :: (IsType a, IsType b) => IsType (Function a b)
+  reflectFunction :: (Reflect a, Reflect b) => Reflect (Function a b)
   where
     reflect _ = Function
       (reflect (Proxy :: Proxy a))
@@ -114,36 +115,36 @@ else instance
 -- Generic types --
 
 else instance
-  isTypeArgument :: IsType a => IsType (Argument a)
+  reflectArgument :: Reflect a => Reflect (Argument a)
   where
     reflect _ = Argument (reflect (Proxy :: Proxy a))
 
 else instance
-  isTypeNoArguments :: IsType NoArguments
+  reflectNoArguments :: Reflect NoArguments
   where
     reflect _ = NoArguments
 
 else instance
-  isTypeConstructor :: (IsSymbol n, IsType a) => IsType (Constructor n a)
+  reflectConstructor :: (IsSymbol s, Reflect a) => Reflect (Constructor s a)
   where
     reflect _ = Constructor
-      (reflectSymbol (SProxy :: SProxy n))
+      (reflectSymbol (SProxy :: SProxy s))
       (reflect (Proxy :: Proxy a))
 
 else instance
-  isTypeNoConstructors :: IsType NoConstructors
+  reflectNoConstructors :: Reflect NoConstructors
   where
     reflect _ = NoConstructors
 
 else instance
-  isTypeSum :: (IsType a, IsType b) => IsType (Sum a b)
+  reflectSum :: (Reflect a, Reflect b) => Reflect (Sum a b)
   where
     reflect _ = Sum
       (reflect (Proxy :: Proxy a))
       (reflect (Proxy :: Proxy b))
 
 else instance
-  isTypeProduct :: (IsType a, IsType b) => IsType (Product a b)
+  reflectProduct :: (Reflect a, Reflect b) => Reflect (Product a b)
   where
     reflect _ = Product
       (reflect (Proxy :: Proxy a))
@@ -154,7 +155,7 @@ else instance
 
 -- | Note: any hand made instances in other modules will overlap with this one.
 else instance
-  isTypeGeneric :: (Generic a r, IsType r) => IsType a
+  reflectGeneric :: (Generic a r, Reflect r) => Reflect a
   where
     reflect _ = reflect (Proxy :: Proxy r)
 
@@ -194,31 +195,31 @@ castWith (Refl proof) x = proof \_ -> to x
 -- |
 -- | A type safe cast, for example, could be written like:
 -- |
--- |     cast :: forall a b. IsType a => IsType b => a -> Maybe b
+-- |     cast :: forall a b. Reflect a => Reflect b => a -> Maybe b
 -- |     cast x
 -- |       | Just proof <- decide :: Maybe (Same a b) = Just $ castWith proof x
 -- |       | otherwise = Nothing
 -- |
-decide :: forall a b. IsType a => IsType b => Maybe (Same a b)
+decide :: forall a b. Reflect a => Reflect b => Maybe (Same a b)
 decide
   | reflect (Proxy :: Proxy a) == reflect (Proxy :: Proxy b) = Just $ unsafeCoerce refl
   | otherwise = Nothing
 
 
 -- | Similar to `decide`, but uses concrete values to determine the type variables.
-decideFrom :: forall a b. IsType a => IsType b => a -> b -> Maybe (Same a b)
+decideFrom :: forall a b. Reflect a => Reflect b => a -> b -> Maybe (Same a b)
 decideFrom _ _ = decide
 
 
--- | Type safe cast from type `a` to type `b` using IsType information.
-cast :: forall a b. IsType a => IsType b => a -> Maybe b
+-- | Type safe cast from type `a` to type `b` using Reflect information.
+cast :: forall a b. Reflect a => Reflect b => a -> Maybe b
 cast x
-  | Just proof <- decide :: Maybe (Same a b) = Just $ castWith proof x
+  | Just proof <- (decide :: Maybe (Same a b)) = Just $ castWith proof x
   | otherwise = Nothing
 
 
 -- | (Faster?) alternative to `cast`, using an unsafe coerce internally.
-cast' :: forall a b. IsType a => IsType b => a -> Maybe b
+cast' :: forall a b. Reflect a => Reflect b => a -> Maybe b
 cast' x
   | typeOf x == reflect (Proxy :: Proxy b) = Just $ unsafeCoerce x
   | otherwise = Nothing
