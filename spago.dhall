@@ -1,4 +1,5 @@
-{ name = "type-reflection"
+{ sources = [ "src/**/*.purs", "test/**/*.purs" ]
+, name = "type-reflection"
 , dependencies =
   [ "prelude"
   , "generics-rep"

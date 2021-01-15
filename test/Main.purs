@@ -27,13 +27,13 @@ import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
 import Data.Anything (class IsType, class TypeEquals, Anything, Proxy(..), Reflection, Same, cast, decide, decideFrom, from, pack, refl, reflect, to, typeOf, unpack)
 
--- Some types ------------------------------------------------------------------
--- None --
+---- Some types ----------------------------------------------------------------
+---- None ----
 data None
 
 derive instance genericNone :: Generic None _
 
--- Only --
+---- Only ----
 data Only
   = Only
 
@@ -42,7 +42,7 @@ derive instance genericOnly :: Generic Only _
 o :: Only
 o = Only
 
--- Pair --
+---- Pair ----
 data Pair a b
   = Pair a b
 
@@ -51,7 +51,7 @@ derive instance genericPair :: Generic (Pair a b) _
 p :: Pair Int Int
 p = Pair 1 2
 
--- More --
+---- More ----
 data More a b
   = Zero
   | One a
@@ -62,7 +62,7 @@ derive instance genericTest :: Generic (More a b) _
 m :: More Int (Pair Int Int -> Int)
 m = Two 1 (\(Pair x y) -> x + y)
 
--- List --
+---- List ----
 data List a
   = Nil
   | Cons a (List a)
@@ -72,7 +72,7 @@ derive instance genericList :: Generic (List a) _
 l :: List Int
 l = Cons 1 (Cons 0 Nil)
 
--- Tree --
+---- Tree ----
 data Tree a b
   = Leaf a
   | Node (Tree a b) b (Tree a b)
@@ -82,7 +82,7 @@ derive instance genericTree :: Generic (Tree a b) _
 t :: Tree Int String
 t = Node (Leaf 1) "a" (Leaf 2)
 
--- Existential typing ----------------------------------------------------------
+---- Existential typing --------------------------------------------------------
 d1 :: Anything
 d1 = pack 1
 
@@ -93,7 +93,7 @@ dp :: Anything
 dp = pack (Pair 1 2)
 
 da :: Anything
-da = pack [3, 4]
+da = pack [ 3, 4 ]
 
 df :: Anything
 df = pack (f3 3)
@@ -113,8 +113,8 @@ fst' :: forall a b. IsType a => IsType b => Proxy b -> Anything -> Maybe a
 fst' _ d
   | Just (Pair x y) <- (unpack d :: Maybe (Pair a b)) = Just x
   | otherwise = Nothing
--- case unpack_pair d :: forall a' b'. IsType a' => IsType b' => Maybe (Pair a' b') of
 
+-- case unpack_pair d :: forall a' b'. IsType a' => IsType b' => Maybe (Pair a' b') of
 -- Just (Pair x y) -> ?h
 --   -- | decide :: Maybe (Same a a') -> Just x
 -- Nothing -> Nothing
@@ -140,7 +140,7 @@ run_a = ado
   x <- unpack d1
   y <- unpack d2
   a <- unpack da
-  in [x, y] <> a
+  in [ x, y ] <> a
 
 run_f :: Maybe Int
 run_f = ado

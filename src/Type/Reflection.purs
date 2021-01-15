@@ -20,7 +20,7 @@ import Type.Equality (class TypeEquals, from, to)
 import Type.Proxy (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
 
--- Type representations --------------------------------------------------------
+---- Type representations --------------------------------------------------------
 -- | Non-type indexed representation of types.
 data Reflection
   = Argument Reflection
@@ -56,14 +56,14 @@ instance showReflection :: Show Reflection where
   show (Array inner) = "(Array " <> show inner <> ")"
   show (Function a b) = "(" <> show a <> " -> " <> show b <> ")"
 
--- IsType --------------------------------------------------------------------
+---- IsType --------------------------------------------------------------------
 class IsType a where
   reflect :: Proxy a -> Reflection
 
 typeOf :: forall a. IsType a => a -> Reflection
 typeOf _ = reflect (Proxy :: Proxy a)
 
--- Basic types --
+---- Basic types ----
 instance reflectBoolean ::
   IsType Boolean where
   reflect _ = Boolean
@@ -87,7 +87,7 @@ else instance reflectFunction ::
   (IsType a, IsType b) =>
   IsType (Function a b) where
   reflect _ = Function (reflect (Proxy :: Proxy a)) (reflect (Proxy :: Proxy b))
--- Generic types --
+---- Generic types ----
 else instance reflectArgument ::
   IsType a =>
   IsType (Argument a) where
@@ -110,14 +110,14 @@ else instance reflectProduct ::
   (IsType a, IsType b) =>
   IsType (Product a b) where
   reflect _ = Product (reflect (Proxy :: Proxy a)) (reflect (Proxy :: Proxy b))
--- Dispatch --
+---- Dispatch ----
 -- | Note: any hand made instances in other modules will overlap with this one.
 else instance reflectGeneric ::
   (Generic a r, IsType r) =>
   IsType a where
   reflect _ = reflect (Proxy :: Proxy r)
 
--- Propositional equality ------------------------------------------------------
+---- Propositional equality ----------------------------------------------------
 -- | If `Same a b` is inhabited by some terminating value, then the type `a` is the same as the type `b`.
 -- | To use this equality in practice, pattern-match on the `Same a b` to get out the `Refl` constructor with a proof.
 -- | When unpacking the proof, the compiler adds `TypeEquals a b` to the context.
@@ -135,7 +135,7 @@ refl = Refl \pack -> pack unit
 castWith :: forall a b. Same a b -> a -> b
 castWith (Refl proof) x = proof \_ -> to x
 
--- Type safe casts -------------------------------------------------------------
+---- Type safe casts -----------------------------------------------------------
 -- | Decide at runtime if two types `a` and `b` are the same.
 -- | If they do, we give a proof in form of `Just refl`,
 -- | otherwise we return `Nothing`.
