@@ -8,9 +8,14 @@ module Data.Anything
 import Type.Reflection
 -- import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe)
+import Data.Show (class Show, show)
+import Data.Monoid ((<>))
 
 data Anything
   = Anything (forall p. (forall a. IsType a => a -> p) -> p)
+
+instance showAnything :: Show Anything where
+  show (Anything unmake) = unmake \x -> "Anything :: " <> show (typeOf x)
 
 -- derive instance genericAnything :: Generic (Anything a) _
 pack :: forall a. IsType a => a -> Anything
